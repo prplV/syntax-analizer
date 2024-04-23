@@ -9,12 +9,15 @@ pub enum DataTypes {
     EndTerm,
     FirstTerm,
     SecondTerm,
-    EndSlagTerm, 
+    //
+    EndSlagTerm1, 
+    EndSlagTerm2,
+    //
     DblDotTerm,
     EqTerm,
     //  middle important
     Label,  // ?
-    Int,    // ?
+    Int,   // ?
     Var,  
     IntWithComma, 
     VarWithComma,

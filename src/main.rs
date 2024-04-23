@@ -59,11 +59,11 @@ fn main() {
     //      Err(err) => {err.print()},
     // }
 
-    // let mut comp = Compiler::new(String::from("начало первое о1324ти, вц123 второе 12 34 2 2 21 5 первое л2345, р2ау, влад 12, 123, 4, 5, 1, 1 конец слагаемого 12 : а12 = - sin cos 23 + 2 - 2 not 1 * 4 / tg 21 and а241  конец"));
-    // match comp.proccess() {
-    //     Ok(_) => { println!("valid cmd")},
-    //     Err(val) => { println!("{}", val.print()) },
-    // }
+    let mut comp = Compiler::new(String::from("начало второе 12 второе 42 231 второе 5 4 123 512 888 конец слагаемого 12 : а12 = - sin cos 23 + 2 - 2 not 1 * 4 / tg 21 and а241  конец"));
+    match comp.proccess() {
+        Ok(_) => { println!("valid cmd")},
+        Err(val) => { println!("{}", val.print()) },
+    }
 
     //term rec test             SUCCESSFULLY PASSED!
     // println!("{:?}", Compiler::define_term_type("первое"));
@@ -101,4 +101,13 @@ fn main() {
     //     Ok(val) => println!("{:?}", val),
     //     Err(er) => println!("{}", er.print()),
     // }
+
+
+    // println!("{:?}", Compiler::define_int_type("45"));
+    // println!("{:?}", Compiler::define_int_type("13,"));
+    // println!("{:?}", Compiler::define_int_type("5324512"));
+    // println!("{:?}", Compiler::define_int_type("123562360"));
+    // println!("{:?}", Compiler::define_int_type("123562360,"));
+    // println!("{:?}", Compiler::define_int_type("132518"));
+    // println!("{:?}", Compiler::define_int_type("1325,18"));
 }
