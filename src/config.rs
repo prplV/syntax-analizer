@@ -29,10 +29,12 @@ impl Compiler {
         
         for (i ,token) in self.str.split_ascii_whitespace().enumerate() {
             //println!("{}. {}", i, token);
+            // stupid pipe needs to be deleted soon
             if i == self.str.split_ascii_whitespace().count() - 1 {
                 if token != "конец" {
                     return Err(Errs::LangNoEndTerm);
                 } else {
+                    println!("end term");
                     self.prev_token = DataTypes::EndTerm;
                 }
             } else {
@@ -96,13 +98,10 @@ impl Compiler {
                                 }
                             },
                             Err(err) => {
-                                if let Ok(_) = Compiler::define_var_type(&token) {
-                                    return Err(Errs::MnSecondWithoutInts);
-                                } else if let Some(_) = Compiler::define_math_op_type(&token) {
-                                    return Err(Errs::MnSecondWithoutInts);
-                                } else {
-                                    return Err(err)
+                                if Compiler::check_outbound_int(&token) {
+                                    return Err(err);
                                 }
+                                return Err(Errs::MnSecondWithoutInts);
                             },
                         }
                     },
@@ -115,7 +114,8 @@ impl Compiler {
                             match Compiler::define_int_type(&token) {
                                 Ok(val) => {
                                     match val {
-                                        DataTypes::Int => {     // overvising "second"'s int enumeration with only 1 int with slag 
+                                        DataTypes::Int => {     
+                                            // overvising "second"'s int enumeration with only 1 int with slag 
                                             self.int_enum_control = true;
                                             self.prev_token = val;
                                         },
@@ -128,7 +128,7 @@ impl Compiler {
                                     }
                                 },
                                 Err(_) => {
-                                    self.int_enum_control = false;
+                                    //self.int_enum_control = false;
                                     //////////////////////////////////////////////////////
                                     if Compiler::check_outbound_int(&token) {
                                         return Err(Errs::AtomImpermissibleInt);
@@ -160,6 +160,14 @@ impl Compiler {
                         // slag 
                         // last int -> end slag term 
                         else if let Blocks::Slag = self.current_block {
+                            // int int check 
+                            match Compiler::define_int_type(&token) {
+                                Ok(_) => return Err(Errs::SlagIntsEnum),
+                                Err(_) => {
+                                    // pipe (pepe)
+                                },
+                            }
+                            // term check 
                             match Compiler::define_term_type(&token) {
                                 Some(val) => {
                                     match val {
@@ -172,37 +180,114 @@ impl Compiler {
                                 None => return Err(Errs::SlagEndTerm),
                             }
                         }
-                        // oper
-                        else if let Blocks::Oper = self.current_block {
-                            match Compiler::define_term_type(&token) {
-                                Some(val) => {
-                                    if let DataTypes::DblDotTerm = val {
-                                        self.prev_token = val;
+
+                        // r.p. //////////////////////////////////////////
+                        else if let Blocks::RightSide = self.current_block {
+                            match Compiler::define_math_op_type(&token) {
+                                Some(_val) => self.prev_token = _val,
+                                None => {
+                                    if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
+                                        self.current_block = Blocks::Oper;
+                                        self.prev_token = DataTypes::Label;
+                                    } else if let Some(DataTypes::EndTerm) = Compiler::define_term_type(&token) {
+                                        self.prev_token = DataTypes::EndTerm;
+                                        self.current_block = Blocks::Lang;
                                     } else {
-                                        return Err(Errs::OperNoDblDotAfterLabel);
+                                        return Err(Errs::RightSideInt);
                                     }
                                 },
-                                None => return Err(Errs::OperNoDblDotAfterLabel),
                             }
-                        }
-
-                        // r.p.
-                        else if let Blocks::RightSide = self.current_block {
-                            todo!();
                         }
                         // math ops 
                     },
                     DataTypes::IntWithComma => {
                         println!("int,");
-                        todo!()
+                        // int 
+                        // int, 
+                        match Compiler::define_int_type(&token) {
+                            Ok(val) => {
+                                self.prev_token = val;
+                            },
+                            Err(_) => return Err(Errs::SlagIntsEnum),
+                        }
+
+                        
+                        //todo!()
                     },              //vtoroe(...), slag (only one), label, 
                     DataTypes::Var => {
                         println!("var");
-                        todo!()
+                        // first 
+                        if let Blocks::Mn = self.current_block {
+                            match Compiler::define_term_type(&token) {
+                                Some(val) => {
+                                    match val {
+                                        DataTypes::FirstTerm | 
+                                        DataTypes::SecondTerm => {
+                                            self.prev_token = val;
+                                        },
+                                        _ => return Err(Errs::MnVarsEnumeration),
+                                    }
+                                },
+                                // 'int,', int 
+                                None => {
+                                    match Compiler::define_int_type(&token) {
+                                        Ok(_val) => {
+                                            self.prev_token = _val; 
+                                            self.current_block = Blocks::Slag;
+                                        },
+                                        Err(_) => return Err(Errs::MnVarsEnumeration),
+                                    }
+                                }, //return Err(Errs::MnVarsEnumeration),
+                            }
+                        } else if let Blocks::Oper = self.current_block {
+                            match Compiler::define_term_type(&token) {
+                                Some(_val) => {
+                                    match _val {
+                                        DataTypes::EqTerm => {
+                                            self.prev_token = _val;
+                                        },
+                                        _ => return Err(Errs::OperNoEqSymbol),
+                                    }
+                                },
+                                None => {
+                                    return Err(Errs::OperNoEqSymbol);
+                                },
+                            }
+                        } ///////////////////////////// rp
+                        else if let Blocks::RightSide = self.current_block {
+                            match Compiler::define_math_op_type(&token) {
+                                Some(_val) => self.prev_token = _val,
+                                None => {
+                                    if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
+                                        self.prev_token = DataTypes::Label;
+                                        self.current_block = Blocks::Oper;
+                                    } else if let Some(DataTypes::EndTerm) = Compiler::define_term_type(&token) {
+                                        self.prev_token = DataTypes::EndTerm;
+                                        self.current_block = Blocks::Lang;
+                                    } else {
+                                        return Err(Errs::RightSideVar)
+                                    }
+                                },
+                            }
+                        }
                     },
                     DataTypes::VarWithComma => {
                         println!("var,");
-                        todo!()
+                        // var,
+                        match Compiler::define_var_type(&token) {
+                            Ok(_val) => {
+                                self.prev_token = _val;
+                            },
+                            Err(er) => {
+                                if let Ok(_) = Compiler::define_int_type(&token) {
+                                    return Err(Errs::MnFirstWithoutVars);
+                                } else if let Some(_) = Compiler::define_term_type(&token) {
+                                    return Err(Errs::MnFirstWithoutVars);
+                                } else {
+                                    return Err(er)
+                                }
+                            }, // return Err(er),
+                        }
                     },
                     
                     DataTypes::EndSlagTerm1 => {
@@ -224,63 +309,146 @@ impl Compiler {
                             Ok(_val) => {
                                 if let DataTypes::Int = _val {
                                     self.current_block = Blocks::Oper;
+                                    self.prev_token = DataTypes::Label;
                                 }
                             },
-                            Err(_er) => todo!(),
+                            Err(_) => return Err(Errs::SlagEndTerm),
+                        }
+                    },
+
+                    DataTypes::Label => {
+                        println!("label");
+                        match Compiler::define_term_type(&token) {
+                            Some(val) => {
+                                if let DataTypes::DblDotTerm = val {
+                                    self.prev_token = val;
+                                } else {
+                                    return Err(Errs::OperNoDblDotAfterLabel);
+                                }
+                            },
+                            None => return Err(Errs::OperNoDblDotAfterLabel),
                         }
                     },
 
                     DataTypes::DblDotTerm => {
                         println!(":");
-                        todo!()
+                        match Compiler::define_var_type(&token) {
+                            Ok(_val) => self.prev_token = _val,
+                            Err(_) => return Err(Errs::OperNoVarName),
+                        }
                     },
+                    ////// START RP
                     DataTypes::EqTerm => {
                         println!("=");
-                        todo!()
+                        // -, func, var, int
+                        if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
+                            self.prev_token = DataTypes::Int;
+                        } else if let Ok(DataTypes::Var) = Compiler::define_var_type(&token) {
+                            self.prev_token = DataTypes::Var;
+                        } else {
+                            match Compiler::define_math_op_type(&token) {
+                                Some(_val) => {
+                                    match _val {
+                                        DataTypes::Minus | DataTypes::FuncSin 
+                                        | DataTypes::FuncCos | DataTypes::FuncAbs => {
+                                            self.prev_token = _val;
+                                        }, 
+                                        _ => return Err(Errs::RightSideStart),
+                                    }
+                                },
+                                None => return Err(Errs::RightSideStart), 
+                            }
+                        }
                     },
-                    DataTypes::Plus => {
-                        println!("+");
-                        todo!()
+                    DataTypes::Plus | DataTypes::Minus | DataTypes::Multiply|
+                    DataTypes::Divide | DataTypes::LogicalAnd | DataTypes::LogicalOr |
+                    DataTypes::LogicalNot | DataTypes::FuncAbs | DataTypes::FuncSin | 
+                    DataTypes::FuncCos => {
+                        println!("math-op");
+                        // int, var, func 
+                        if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
+                            self.prev_token = DataTypes::Int;
+                            self.current_block = Blocks::RightSide;
+                        } else if let Ok(DataTypes::Var) = Compiler::define_var_type(&token) {
+                            self.prev_token = DataTypes::Var;
+                            self.current_block = Blocks::RightSide;
+                        } else {
+                            match Compiler::define_math_op_type(&token) {
+                                Some(_val) => {
+                                    match _val {
+                                        DataTypes::FuncSin 
+                                        | DataTypes::FuncCos | DataTypes::FuncAbs => {
+                                            self.prev_token = _val;
+                                            self.current_block = Blocks::RightSide;
+                                        }, 
+                                        _ => {
+                                            match Compiler::define_math_op_error(&self.prev_token) {
+                                                Some(er) => return Err(er),
+                                                None => panic!("impermissible behaviour"),
+                                            };
+                                        },//return Err(Errs::RightSideStart),
+                                    }
+                                },
+                                None => {
+                                    match Compiler::define_math_op_error(&self.prev_token) {
+                                        Some(er) => return Err(er),
+                                        None => panic!("impermissible behaviour"),
+                                    };
+                                }, 
+                            }
+                        }
                     },
                     DataTypes::Minus => {
                         println!("-");
+                        // int, var, func
                         todo!()
                     },
                     DataTypes::Multiply => {
                         println!("*");
+                        // int, var, func
                         todo!()
                     },
                     DataTypes::Divide => {
                         println!("/");
+                        // int, var, func
                         todo!()
                     },
                     DataTypes::LogicalAnd => {
                         println!("and");
+                        // int, var, func
                         todo!()
                     },
                     DataTypes::LogicalOr => {
                         println!("or");
+                        // int, var, func
                         todo!()
                     },
                     DataTypes::LogicalNot => {
                         println!("not");
+                        // int, var, func
                         todo!()
                     },
                     DataTypes::FuncAbs => {
                         println!("abs");
+                        // int, var, func
                         todo!()
                     },
                     DataTypes::FuncCos => {
                         println!("cos");
+                        // int, var, func
                         todo!()
                     },
                     DataTypes::FuncSin => {
                         println!("sin");
+                        // int, var, func
                         todo!()
                     },
 
                     // ---------
-
+                    DataTypes::EndTerm => {
+                        println!("end term");
+                        break;
+                    },
                     _ => todo!(),
                 }
 
@@ -347,9 +515,24 @@ impl Compiler {
         match wit {
             'а' | 'б' | 'в' | 'г' | 'д' | 'е' | 'ё' | 'ж' | 'з' 
             | 'и' | 'й' | 'к' | 'л' | 'м' | 'н' | 'о' | 'п' | 'р' | 
-            'с' | 'т' | 'у' | 'ф' | 'к' | 'ц' | 'ч' | 'щ' | 'ш' | 'ъ' | 'ы' 
+            'с' | 'т' | 'у' | 'ф' | 'х' | 'ц' | 'ч' | 'щ' | 'ш' | 'ъ' | 'ы' 
             | 'ь' | 'э' | 'ю' | 'я' => return true,
             _ => return false,
+        }
+    }
+    fn define_math_op_error(wit: &DataTypes) -> Option<Errs> {
+        match wit {
+            DataTypes::Plus => Some(Errs::RightSidePlus),
+            DataTypes::Minus => Some(Errs::RightSideMinus),
+            DataTypes::Multiply => Some(Errs::RightSideMultiply),
+            DataTypes::Divide => Some(Errs::RightSideDivide),
+            DataTypes::LogicalNot => Some(Errs::RightSideLogNot),
+            DataTypes::LogicalAnd => Some(Errs::RightSideLogAnd),
+            DataTypes::LogicalOr => Some(Errs::RightSideLogOr),
+            DataTypes::FuncSin => Some(Errs::RightSideFuncSin),
+            DataTypes::FuncCos => Some(Errs::RightSideFuncCos),
+            DataTypes::FuncAbs => Some(Errs::RightSideFuncAbs),
+            _ => None,
         }
     }
     pub fn define_math_op_type(wit: &str) -> Option<DataTypes> {
@@ -373,7 +556,7 @@ impl Compiler {
             "конец" => return Some(DataTypes::EndTerm),
             "первое" => return Some(DataTypes::FirstTerm),
             "второе" => return Some(DataTypes::SecondTerm),
-            "конец" => return Some(DataTypes::EndSlagTerm1),
+            //"конец" => return Some(DataTypes::EndSlagTerm1),
             "слагаемого" => return Some(DataTypes::EndSlagTerm2),
             ":" => return Some(DataTypes::DblDotTerm),
             "=" => return Some(DataTypes::EqTerm),

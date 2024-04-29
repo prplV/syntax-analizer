@@ -59,7 +59,7 @@ fn main() {
     //      Err(err) => {err.print()},
     // }
 
-    let mut comp = Compiler::new(String::from("начало второе 12 второе 42 231 второе 5 4 123 512 888 конец слагаемого 12 : а12 = - sin cos 23 + 2 - 2 not 1 * 4 / tg 21 and а241  конец"));
+    let mut comp = Compiler::new(String::from("начало первое п2, апцп2412, рке52, хч2цац второе 12 второе 42 123 51 1 второе 5 4, 123, 512 конец слагаемого 12 : а12 = - sin cos 23 + 2 - 2 not 1 * 4 / abs 21 and а241 12 : а3 = 2 + 2 конец"));
     match comp.proccess() {
         Ok(_) => { println!("valid cmd")},
         Err(val) => { println!("{}", val.print()) },

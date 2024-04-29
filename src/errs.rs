@@ -1,5 +1,7 @@
 #[derive(Debug)]
 pub enum Errs {
+    // COLLAPSE
+    ImpermissibleBehaviour,
     //  global  
     LangNoStartTerm,
     LangNoEndTerm,
@@ -28,12 +30,26 @@ pub enum Errs {
     OperNoVarName,              // нет имени переменной после : 
     OperNoEqSymbol,             // нет = после имени переменной
     // right side 
+    RightSideStart,
+    RightSidePlus,
+    RightSideMinus,
+    RightSideMultiply,
+    RightSideDivide,
+    RightSideLogAnd,
+    RightSideLogOr,
+    RightSideLogNot,
+    RightSideFuncSin,
+    RightSideFuncCos,
+    RightSideFuncAbs,
+    RightSideVar,
+    RightSideInt,
     // --
 }
 
 impl Errs{
     pub fn print(&self) -> &str {
         match self {
+            Errs::ImpermissibleBehaviour => { return "Impermissible Behaviour! Foreign token"; },
             Errs::LangNoStartTerm => { return "Язык должен начинаться с терминала 'начало'"; },
             Errs::LangNoEndTerm => { return "Язык должен оканчиваться терминалом 'конец'"; },
             Errs::AtomImpermissibleVar => { return "В именах переменных могут быть использованы только буквы кириллицы и цифры восьмеричной системы счиления"; },
@@ -44,18 +60,31 @@ impl Errs{
             Errs::AtomImpermissibleNum => { return "Используемые целые числа должны быть восьмиричными"; },
             Errs::AtomImpermissibleLetter => { return "Используемые буквы должны быть из русского алфавита"; },
             Errs::MnNoPrefixTerm => { return "Множество должно начинаться с терминала (либо 'первое', либо 'второе')"; },
-            Errs::MnVarsEnumeration => { return ""; },
+            Errs::MnVarsEnumeration => { return "После множества может быть либо слагаемое, либо еще одно множество"; },
             Errs::MnIntsEnumeration => { return ""; },
             Errs::MnFirstWithoutVars => { return "После терминала 'первое' должны идти переменные через ','"; },
             Errs::MnSecondWithoutInts => { return "После терминала 'второе' должны идти целые числа россыпью"; },
-            Errs::SlagIntsEnum => { return "В слагаемом целые числа должны идти через ','"; },
+            Errs::SlagIntsEnum => { return "В слагаемом должны быть записаны целые числа через ','"; },
             Errs::SlagNoInts => {return "В слагаемом должно быть хотя бы одно целое число";},
             Errs::SlagEndTerm => { return "Слагаемое должно оканчиваться терминалом 'конец слагаемого'"; },
             Errs::OperNoLabel => { return "Оператор должен начинаться с метки"; },
             Errs::OperLabelNotInt => { return "В операторе метка должна представлять из себя восьмиричное целое число" },
-            Errs::OperNoDblDotAfterLabel => { return "После метки должно быть двоеточие"; },
-            Errs::OperNoVarName => { return "После двоеточия должно быть имя переменной"; },
-            Errs::OperNoEqSymbol => { return "После имени переменной ожидался терминал '='"; },
+            Errs::OperNoDblDotAfterLabel => { return "В операторе после метки должно быть двоеточие"; },
+            Errs::OperNoVarName => { return "В операторе после двоеточия должно быть имя переменной"; },
+            Errs::OperNoEqSymbol => { return "В операторе после имени переменной должен быть терминал '='"; },
+            Errs::RightSideStart => { return "Правая часть может начинаться только с аддитивной операции '-', фукнций, целого числа или переменной "; },
+            Errs::RightSidePlus => { return "В правой части после операции '+' может стоять либо переменная, либо целое число, либо функция"; },
+            Errs::RightSideMinus => { return "В правой части после операции '-' может стоять либо переменная, либо целое число, либо функция"; },
+            Errs::RightSideMultiply => { return "В правой части после операции '*' может стоять либо переменная, либо целое число, либо функция"; },
+            Errs::RightSideDivide => { return "В правой части после операции '/' может стоять либо переменная, либо целое число, либо функция"; },
+            Errs::RightSideLogNot => { return "В правой части после операции 'not' может стоять либо переменная, либо целое число, либо функция"; },
+            Errs::RightSideLogAnd => { return "В правой части после операции 'and' может стоять либо переменная, либо целое число, либо функция"; },
+            Errs::RightSideLogOr => { return "В правой части после операции 'or' может стоять либо переменная, либо целое число, либо функция"; },
+            Errs::RightSideFuncSin => { return "В правой части после операции 'sin' может стоять либо переменная, либо целое число, либо функция"; },
+            Errs::RightSideFuncCos => { return "В правой части после операции 'cos' может стоять либо переменная, либо целое число, либо функция"; },
+            Errs::RightSideFuncAbs => { return "В правой части после операции 'abs' может стоять либо переменная, либо целое число, либо функция"; },
+            Errs::RightSideVar => { return "В правой части после переменной может стоять либо функция, либо математическая операция, либо метка в начале блока оператор"; },
+            Errs::RightSideInt => { return "В правой части после целого числа может стоять либо функция, либо математическая операция, либо метка в начале блока оператор"; },
         }
     }
 }
