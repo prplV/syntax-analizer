@@ -398,51 +398,6 @@ impl Compiler {
                             }
                         }
                     },
-                    DataTypes::Minus => {
-                        println!("-");
-                        // int, var, func
-                        todo!()
-                    },
-                    DataTypes::Multiply => {
-                        println!("*");
-                        // int, var, func
-                        todo!()
-                    },
-                    DataTypes::Divide => {
-                        println!("/");
-                        // int, var, func
-                        todo!()
-                    },
-                    DataTypes::LogicalAnd => {
-                        println!("and");
-                        // int, var, func
-                        todo!()
-                    },
-                    DataTypes::LogicalOr => {
-                        println!("or");
-                        // int, var, func
-                        todo!()
-                    },
-                    DataTypes::LogicalNot => {
-                        println!("not");
-                        // int, var, func
-                        todo!()
-                    },
-                    DataTypes::FuncAbs => {
-                        println!("abs");
-                        // int, var, func
-                        todo!()
-                    },
-                    DataTypes::FuncCos => {
-                        println!("cos");
-                        // int, var, func
-                        todo!()
-                    },
-                    DataTypes::FuncSin => {
-                        println!("sin");
-                        // int, var, func
-                        todo!()
-                    },
 
                     // ---------
                     DataTypes::EndTerm => {
