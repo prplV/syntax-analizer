@@ -1,6 +1,4 @@
 use core::panic;
-use std::collections::btree_map::Values;
-use std::sync::atomic::compiler_fence;
 
 //what i need to add 
 // 1 - const k
@@ -79,11 +77,13 @@ impl Compiler {
                             Ok(val) => self.prev_token = val,
                             Err(err) => {
                                 if let Some(_) = Compiler::define_math_op_type(&token){
-                                    return Err(Errs::MnFirstWithoutVars);
-                                } else if let Ok(_) = Compiler::define_int_type(&token) {
-                                    return Err(Errs::MnFirstWithoutVars);
-                                } else {
                                     return Err(err);
+                                } else if let Ok(_) = Compiler::define_int_type(&token) {
+                                    return Err(err);
+                                } else if let Some(_) = Compiler::define_term_type(&token) {
+                                    return Err(err);
+                                }else {
+                                    return Err(Errs::MnFirstWithoutVars);
                                 }
                             },
                         }
@@ -124,7 +124,9 @@ impl Compiler {
                                             self.int_enum_control = false;
                                             self.prev_token = val;
                                         },
-                                        _ => panic!("Irregular behaviour"),
+                                        // rewrite to return error 
+                                        // _ => panic!("Irregular behaviour"),
+                                        _ => return Err(Errs::MnSecondWithoutInts),
                                     }
                                 },
                                 Err(_) => {
@@ -206,9 +208,12 @@ impl Compiler {
                         // int, 
                         match Compiler::define_int_type(&token) {
                             Ok(val) => {
+                                if let DataTypes::Label = val {
+                                    return Err(Errs::SlagIntsEnum);
+                                }
                                 self.prev_token = val;
                             },
-                            Err(_) => return Err(Errs::SlagIntsEnum),
+                            Err(_) => return Err(Errs::SlagAfterIntsWithCommaEnum),
                         }
 
                         
@@ -225,6 +230,7 @@ impl Compiler {
                                         DataTypes::SecondTerm => {
                                             self.prev_token = val;
                                         },
+                                        // wrong error 
                                         _ => return Err(Errs::MnVarsEnumeration),
                                     }
                                 },
@@ -232,10 +238,20 @@ impl Compiler {
                                 None => {
                                     match Compiler::define_int_type(&token) {
                                         Ok(_val) => {
+                                            if let DataTypes::Label = _val {
+                                                return Err(Errs::SlagIntsEnum);
+                                            }
                                             self.prev_token = _val; 
                                             self.current_block = Blocks::Slag;
                                         },
-                                        Err(_) => return Err(Errs::MnVarsEnumeration),
+                                        Err(_) => {
+                                            if let Ok(_) = Compiler::define_var_type(&token) {
+                                                return Err(Errs::MnFirstWithoutVars);
+                                            }
+                                            else {
+                                                return Err(Errs::MnVarsEnumeration);
+                                            }
+                                        },//return Err(Errs::MnVarsEnumeration),
                                     }
                                 }, //return Err(Errs::MnVarsEnumeration),
                             }
@@ -282,7 +298,7 @@ impl Compiler {
                                 if let Ok(_) = Compiler::define_int_type(&token) {
                                     return Err(Errs::MnFirstWithoutVars);
                                 } else if let Some(_) = Compiler::define_term_type(&token) {
-                                    return Err(Errs::MnFirstWithoutVars);
+                                    return Err(Errs::LangUsingReservedTokens);
                                 } else {
                                     return Err(er)
                                 }
@@ -310,9 +326,14 @@ impl Compiler {
                                 if let DataTypes::Int = _val {
                                     self.current_block = Blocks::Oper;
                                     self.prev_token = DataTypes::Label;
+                                } else if let DataTypes::Label = _val {
+                                    self.current_block = Blocks::Oper;
+                                    self.prev_token = DataTypes::DblDotTerm;
+                                } else {
+                                    return Err(Errs::AtomImpermissibleLabel);
                                 }
                             },
-                            Err(_) => return Err(Errs::SlagEndTerm),
+                            Err(_) => return Err(Errs::OperNoLabel),
                         }
                     },
 
@@ -417,8 +438,10 @@ impl Compiler {
         for (i, num) in wit.chars().enumerate() {
             if Compiler::verify_num(&num) {
                 continue;
-            } else if (i == wit.chars().count() - 1) && (num == ',') {
+            } else if (i == wit.chars().count() - 1) && (num == ',') && (i != 0) {
                 return Ok(DataTypes::IntWithComma);
+            } else if (i == wit.chars().count() - 1) && (num == ':') && (i != 0) {
+                return Ok(DataTypes::Label);
             } else {
                 return Err(Errs::AtomImpermissibleInt);
             }
@@ -439,12 +462,15 @@ impl Compiler {
         } return false;
     }
     pub fn define_var_type(wit: &str) -> Result<DataTypes, Errs> {
+        if let Some(_) = Compiler::define_term_type(&wit) {
+            return Err(Errs::LangUsingReservedTokens);
+        }
         for (i, sym) in wit.to_lowercase().chars().enumerate() {
             if i == 0 {
                 if !Compiler::verify_let(&sym) {
                     return Err(Errs::AtomImpermissibleVarStart);
                 }
-            } else if i == wit.char_indices().count() - 1 { 
+            } else if (i == wit.char_indices().count() - 1) { 
                 if sym == ',' {
                     return Ok(DataTypes::VarWithComma);
                 }
@@ -491,7 +517,7 @@ impl Compiler {
         }
     }
     pub fn define_math_op_type(wit: &str) -> Option<DataTypes> {
-        match wit {
+        match wit.to_lowercase().as_str() {
             "+" => return Some(DataTypes::Plus),
             "-" => return Some(DataTypes::Minus),
             "*" => return Some(DataTypes::Multiply),

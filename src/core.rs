@@ -3,7 +3,6 @@ pub enum DataTypes {
     //  default dt
     Null, 
     //  error type 
-    Unknown,
     //  Terms
     StartTerm,
     EndTerm,
