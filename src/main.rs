@@ -26,6 +26,9 @@ mod errs;
 mod core;
 use config::Compiler;
 
+//use std::io::{self, stdin};
+
+
 // fn syntax_analizer(a: &str){
 //     let b = a.trim().to_lowercase();
 //     for (i, num) in b.split_whitespace().enumerate(){
@@ -58,8 +61,22 @@ fn main() {
     // }
 
 
+
+    // let mut str = String::new();
+
+    // loop {
+    //     stdin().read_line(&mut str).expect("error input()");
+    //     let mut comp = Compiler::new(str.trim().to_string());
+    //     match comp.proccess() {
+    //         Ok(_) => { println!("valid cmd")},
+    //         Err(val) => { println!("{}", val.print()) },
+    //     }
+    //     str.clear();
+    // }
+
+
     // terms as vars
-    let mut comp = Compiler::new(String::from("начало первое п2, апцп2412, рке52, хч2цац второе 12 второе 2 2 2 конец слагаемого 12 : а12 = - sin cos 23 + 2 - 2 not 1 * 4 / abs 21 and а241 12 : а3 = 2 + 2 конец"));
+    let mut comp = Compiler::new(String::from("начало первое п2, апцп2412, рке52, хч2цац второе 12 второе 42 123 51 1 второе 5 4, 123, 512 конец слагаемого 12 : а12 = - sin cos 23 + 2 - 2 not 1 * 4 / abs 21 and а241 12: а3 = 2 + 2 конец"));
     match comp.proccess() {
         Ok(_) => { println!("valid cmd")},
         Err(val) => { println!("{}", val.print()) },
@@ -79,6 +96,9 @@ fn main() {
     // println!("{:?}", Compiler::define_int_type("4121,"));
     // println!("{:?}", Compiler::define_int_type("012"));
     // println!("{:?}", Compiler::define_int_type("8443"));
+    // println!("{:?}", Compiler::define_int_type("012:"));
+    // println!("{:?}", Compiler::define_int_type("+"));
+    // println!("{:?}", Compiler::define_int_type("конец"));
 
     // defining funcs tests     SUCCESSFULLY PASSED!
     // match  Compiler::define_var_type("п23е412т") {

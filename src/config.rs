@@ -24,18 +24,18 @@ impl Compiler {
         }
     }
     pub fn proccess(&mut self) -> Result<(), Errs>{
-        
+        println!("--{}--", self.str);
         for (i ,token) in self.str.split_ascii_whitespace().enumerate() {
-            //println!("{}. {}", i, token);
-            // stupid pipe needs to be deleted soon
-            if i == self.str.split_ascii_whitespace().count() - 1 {
-                if token != "конец" {
-                    return Err(Errs::LangNoEndTerm);
-                } else {
-                    println!("end term");
-                    self.prev_token = DataTypes::EndTerm;
-                }
-            } else {
+            // println!("{}. {}", i, token);
+            // // stupid pipe needs to be deleted soon
+            // if i == self.str.split_ascii_whitespace().count() - 1 {
+            //     if token != "конец" {
+            //         return Err(Errs::LangNoEndTerm);
+            //     } else {
+            //         println!("end term");
+            //         self.prev_token = DataTypes::EndTerm;
+            //     }
+            // } else {
                 
                 match self.prev_token {
                     DataTypes::Null => {
@@ -185,21 +185,31 @@ impl Compiler {
 
                         // r.p. //////////////////////////////////////////
                         else if let Blocks::RightSide = self.current_block {
+                        //else {
                             match Compiler::define_math_op_type(&token) {
                                 Some(_val) => self.prev_token = _val,
                                 None => {
+                                    //println!("hi stupid");
                                     if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
                                         self.current_block = Blocks::Oper;
                                         self.prev_token = DataTypes::Label;
+                                    } else if let Ok(DataTypes::FullLabel) = Compiler::define_int_type(&token) {
+                                        self.current_block = Blocks::Oper;
+                                        self.prev_token = DataTypes::DblDotTerm;
                                     } else if let Some(DataTypes::EndTerm) = Compiler::define_term_type(&token) {
                                         self.prev_token = DataTypes::EndTerm;
                                         self.current_block = Blocks::Lang;
-                                    } else {
+                                        
+                                    } else if i == self.str.split_ascii_whitespace().count() - 1 {
+                                        return Err(Errs::LangNoEndTerm);
+                                    } 
+                                    else {
                                         return Err(Errs::RightSideInt);
                                     }
                                 },
                             }
                         }
+                        
                         // math ops 
                     },
                     DataTypes::IntWithComma => {
@@ -208,7 +218,7 @@ impl Compiler {
                         // int, 
                         match Compiler::define_int_type(&token) {
                             Ok(val) => {
-                                if let DataTypes::Label = val {
+                                if let DataTypes::FullLabel = val {
                                     return Err(Errs::SlagIntsEnum);
                                 }
                                 self.prev_token = val;
@@ -238,7 +248,7 @@ impl Compiler {
                                 None => {
                                     match Compiler::define_int_type(&token) {
                                         Ok(_val) => {
-                                            if let DataTypes::Label = _val {
+                                            if let DataTypes::FullLabel = _val {
                                                 return Err(Errs::SlagIntsEnum);
                                             }
                                             self.prev_token = _val; 
@@ -277,10 +287,16 @@ impl Compiler {
                                     if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
                                         self.prev_token = DataTypes::Label;
                                         self.current_block = Blocks::Oper;
+                                    } else if let Ok(DataTypes::FullLabel) = Compiler::define_int_type(&token) {
+                                        self.current_block = Blocks::Oper;
+                                        self.prev_token = DataTypes::DblDotTerm;
                                     } else if let Some(DataTypes::EndTerm) = Compiler::define_term_type(&token) {
                                         self.prev_token = DataTypes::EndTerm;
                                         self.current_block = Blocks::Lang;
-                                    } else {
+                                    } else if i == self.str.split_ascii_whitespace().count() - 1 {
+                                        return Err(Errs::LangNoEndTerm);
+                                    }  
+                                    else {
                                         return Err(Errs::RightSideVar)
                                     }
                                 },
@@ -326,7 +342,7 @@ impl Compiler {
                                 if let DataTypes::Int = _val {
                                     self.current_block = Blocks::Oper;
                                     self.prev_token = DataTypes::Label;
-                                } else if let DataTypes::Label = _val {
+                                } else if let DataTypes::FullLabel = _val {
                                     self.current_block = Blocks::Oper;
                                     self.prev_token = DataTypes::DblDotTerm;
                                 } else {
@@ -361,6 +377,7 @@ impl Compiler {
                     ////// START RP
                     DataTypes::EqTerm => {
                         println!("=");
+                        self.current_block = Blocks::RightSide;
                         // -, func, var, int
                         if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
                             self.prev_token = DataTypes::Int;
@@ -389,10 +406,10 @@ impl Compiler {
                         // int, var, func 
                         if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
                             self.prev_token = DataTypes::Int;
-                            self.current_block = Blocks::RightSide;
+                            // self.current_block = Blocks::RightSide;
                         } else if let Ok(DataTypes::Var) = Compiler::define_var_type(&token) {
                             self.prev_token = DataTypes::Var;
-                            self.current_block = Blocks::RightSide;
+                            // self.current_block = Blocks::RightSide;
                         } else {
                             match Compiler::define_math_op_type(&token) {
                                 Some(_val) => {
@@ -427,12 +444,34 @@ impl Compiler {
                     },
                     _ => todo!(),
                 }
-
+            // }
+        }
+        println!("{:?} - {:?}", self.current_block, self.prev_token);
+        if let Blocks::Lang = self.current_block {
+            if let DataTypes::EndTerm = self.prev_token {
+                return Ok(());
+            } else {
+                return Err(Errs::LangNoEndTerm);
+            }
+        } else {
+            match self.current_block {
+                Blocks::Mn => {
+                    match self.prev_token {
+                        DataTypes::FirstTerm => todo!(),
+                        DataTypes::SecondTerm => todo!(),
+                        DataTypes::Var | DataTypes::VarWithComma => todo!(),
+                        DataTypes::Int | DataTypes::IntWithComma => todo!(),
+                        _ => return Err(Errs::ImpermissibleBehaviour),
+                    }
+                },
+                Blocks::Oper => {},
+                Blocks::Slag => {},
+                Blocks::RightSide => {},
+                _ => {return Err(Errs::ImpermissibleBehaviour)},
             }
         }
-
-        
-        Ok(())
+        Err(Errs::LangNoEndTerm)
+        // Ok(())
     }
     pub fn define_int_type(wit: &str) -> Result<DataTypes, Errs> {
         for (i, num) in wit.chars().enumerate() {
@@ -441,7 +480,7 @@ impl Compiler {
             } else if (i == wit.chars().count() - 1) && (num == ',') && (i != 0) {
                 return Ok(DataTypes::IntWithComma);
             } else if (i == wit.chars().count() - 1) && (num == ':') && (i != 0) {
-                return Ok(DataTypes::Label);
+                return Ok(DataTypes::FullLabel);
             } else {
                 return Err(Errs::AtomImpermissibleInt);
             }

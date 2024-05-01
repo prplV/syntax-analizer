@@ -16,6 +16,7 @@ pub enum DataTypes {
     EqTerm,
     //  middle important
     Label,  // ?
+    FullLabel,
     Int,   // ?
     Var,  
     IntWithComma, 
@@ -35,6 +36,7 @@ pub enum DataTypes {
     FuncCos, 
     FuncAbs,
 }
+#[derive(Debug)]
 pub enum Blocks {
     Lang, 
     Mn, 
