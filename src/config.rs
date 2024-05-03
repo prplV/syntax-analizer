@@ -1,4 +1,5 @@
 use core::panic;
+use regex::Regex;
 
 //what i need to add 
 // 1 - const k
@@ -23,7 +24,18 @@ impl Compiler {
             int_enum_control: false,
         }
     }
-    pub fn proccess(&mut self) -> Result<(), Errs>{
+    pub fn proccess(&mut self) -> Result<(), Errs> {
+        //
+        // regex 
+        println!("{:?}", self.str);
+        let reg = Regex::new(r"(:|=|sin|cos|abs|not|or|and|\+|\-|\*|\/|,|[а-я]+[0-9]+|[0-9]+)\s?").unwrap();
+        let mut _res = &mut self.str;
+        let _res = reg.replace_all(_res, " $1 ");
+        println!("{:?}", _res);
+        self.str = _res.into();
+        // return Ok(());
+        
+        //
         for (i ,token) in self.str.split_ascii_whitespace().enumerate() {
             // println!("{}. {}", i, token);
             // // stupid pipe needs to be deleted soon
@@ -281,8 +293,11 @@ impl Compiler {
                                             self.prev_token = _val; 
                                             self.current_block = Blocks::Slag;
                                         },
-                                        Err(_) => {
-                                            if let Ok(_) = Compiler::define_var_type(&token) {
+                                        Err(_er) => {
+                                            if let true = Compiler::check_outbound_int(&token) {
+                                                return Err(Errs::AtomImpermissibleVar);
+                                            }
+                                            else if let Ok(_) = Compiler::define_var_type(&token) {
                                                 return Err(Errs::MnFirstWithoutVars);
                                             }
                                             else {
@@ -347,6 +362,9 @@ impl Compiler {
                                 self.prev_token = _val;
                             },
                             Err(er) => {
+                                if token == "," {
+                                    return Err(Errs::MnCommaAfterComma);
+                                }
                                 if let Ok(_) = Compiler::define_int_type(&token) {
                                     return Err(Errs::MnFirstWithoutVars);
                                 } else if let Some(_) = Compiler::define_term_type(&token) {
@@ -371,6 +389,18 @@ impl Compiler {
                             None => return Err(Errs::SlagEndTerm),
                         }
                     },
+
+
+
+
+
+
+
+
+
+
+
+                    
                     DataTypes::EndSlagTerm2 => {
                         println!("slag2");
                         match Compiler::define_int_type(&token) {
@@ -448,6 +478,9 @@ impl Compiler {
                             self.prev_token = DataTypes::Var;
                             // self.current_block = Blocks::RightSide;
                         } else {
+                            if let true = Compiler::check_outbound_int(&token) {
+                                return Err(Errs::AtomImpermissibleInt);
+                            }
                             match Compiler::define_math_op_type(&token) {
                                 Some(_val) => {
                                     match _val {
@@ -573,12 +606,16 @@ impl Compiler {
         if let Some(_) = Compiler::define_term_type(&wit) {
             return Err(Errs::LangUsingReservedTokens);
         }
+        match Compiler::check_outbound_int(wit) {
+            true => {return Err(Errs::AtomImpermissibleVar);},
+            false => {},
+        }
         for (i, sym) in wit.to_lowercase().chars().enumerate() {
             if i == 0 {
                 if !Compiler::verify_let(&sym) {
                     return Err(Errs::AtomImpermissibleVarStart);
                 }
-            } else if (i == wit.char_indices().count() - 1) { 
+            } else if i == wit.char_indices().count() - 1 { 
                 if sym == ',' {
                     return Ok(DataTypes::VarWithComma);
                 }
