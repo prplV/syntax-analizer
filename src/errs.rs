@@ -53,6 +53,7 @@ pub enum Errs {
     RightSideLogicalOps,
     RightSideFuncs,
     RightSideGlobal,
+    RigthSideUnknownVar,
     // --
 }
 
@@ -105,6 +106,7 @@ impl Errs{
             Errs::RightSideLogicalOps => {return "В правой части после логической операции ожидается либо переменная, либо целое число, либо функция";},
             Errs::RightSideFuncs => {return "В правой части после функции ожидается либо переменная, либо целое число, либо еще одна функция";},
             Errs::RightSideGlobal => {return "В правой части могут быть либо переменные, либо целые, либо ";},
+            Errs::RigthSideUnknownVar => {return "В правой части использована необъявленная переменная";},
         }
     }
 }

@@ -1,5 +1,9 @@
 use core::panic;
 use regex::Regex;
+extern crate evalmath;
+//use evalmath::parse::parser;
+//use evalmath::calculate;
+//use evalmath::calculate::calculate;
 
 //what i need to add 
 // 1 - const k
@@ -13,6 +17,10 @@ pub struct Compiler {
     current_block: Blocks,
     // >= 2 ints without commas activates this field (for err type "второе 12 32 конец слагаемого") 
     int_enum_control: bool,
+    rp: String,
+    vars: Vec<(String, String)>,
+    tracked_var: String,
+    func_counter: u32,
 }
 
 impl Compiler {
@@ -22,6 +30,10 @@ impl Compiler {
             prev_token: DataTypes::Null,
             current_block: Blocks::Lang,
             int_enum_control: false,
+            rp: String::new(),
+            vars: Vec::new(),
+            tracked_var: String::new(),
+            func_counter: 0,
         }
     }
     pub fn proccess(&mut self) -> Result<(), Errs> {
@@ -213,6 +225,7 @@ impl Compiler {
                                         DataTypes::Plus | DataTypes::Minus | 
                                         DataTypes::Multiply | DataTypes::Divide | 
                                         DataTypes::LogicalAnd | DataTypes::LogicalOr => {
+                                            self.rp = self.rp.to_owned() + &token;
                                             self.prev_token = _val;
                                         },
                                         _ => return Err(Errs::RightSideInt),
@@ -223,12 +236,15 @@ impl Compiler {
                                     if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
                                         self.current_block = Blocks::Oper;
                                         self.prev_token = DataTypes::Label;
+                                        self.tracked_var = String::new();
                                     } else if let Ok(DataTypes::FullLabel) = Compiler::define_int_type(&token) {
                                         self.current_block = Blocks::Oper;
                                         self.prev_token = DataTypes::DblDotTerm;
+                                        self.tracked_var = String::new();
                                     } else if let Some(DataTypes::EndTerm) = Compiler::define_term_type(&token) {
                                         self.prev_token = DataTypes::EndTerm;
                                         self.current_block = Blocks::Lang;
+                                        self.tracked_var = String::new();
                                         
                                     } else if i == self.str.split_ascii_whitespace().count() - 1 {
                                         return Err(Errs::LangNoEndTerm);
@@ -326,10 +342,12 @@ impl Compiler {
                             match Compiler::define_math_op_type(&token) {
                                 Some(_val) => {
                                     match _val {
+                                        // self.rp = self.rp.to_owned() + &token;
                                         DataTypes::Plus | DataTypes::Minus | 
                                         DataTypes::Multiply | DataTypes::Divide | 
                                         DataTypes::LogicalAnd | DataTypes::LogicalOr => {
                                             self.prev_token = _val;
+                                            self.rp = self.rp.to_owned() + &token;
                                         },
                                         _ => return Err(Errs::RightSideVar),
                                     }
@@ -390,17 +408,6 @@ impl Compiler {
                         }
                     },
 
-
-
-
-
-
-
-
-
-
-
-                    
                     DataTypes::EndSlagTerm2 => {
                         println!("slag2");
                         match Compiler::define_int_type(&token) {
@@ -436,26 +443,50 @@ impl Compiler {
                     DataTypes::DblDotTerm => {
                         println!(":");
                         match Compiler::define_var_type(&token) {
-                            Ok(_val) => self.prev_token = _val,
+                            Ok(_val) => {
+                                if let DataTypes::Var = _val {
+                                    self.prev_token = _val;
+                                    self.tracked_var = String::from(token);
+                                } else {
+                                    return Err(Errs::OperNoVarName);
+                                }
+                            },
                             Err(_) => return Err(Errs::OperNoVarName),
                         }
                     },
                     ////// START RP
                     DataTypes::EqTerm => {
                         println!("=");
+                        self.rp = self.rp.to_owned() + &token;
                         self.current_block = Blocks::RightSide;
                         // -, func, var, int
                         if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
                             self.prev_token = DataTypes::Int;
                         } else if let Ok(DataTypes::Var) = Compiler::define_var_type(&token) {
+                            let mut i = 0;
+                            for (var, _) in &self.vars {
+                                if var == token {
+                                    i+=1;
+                                    break;
+                                }
+                            }
+                            if i == 0 {
+                                return Err(Errs::RigthSideUnknownVar);
+                            }
                             self.prev_token = DataTypes::Var;
                         } else {
                             match Compiler::define_math_op_type(&token) {
                                 Some(_val) => {
                                     match _val {
-                                        DataTypes::Minus | DataTypes::FuncSin 
+                                        DataTypes::Minus => {
+                                            self.rp = self.rp.to_owned() + &token;
+                                            self.prev_token = _val;
+                                        }, 
+                                        DataTypes::FuncSin 
                                         | DataTypes::FuncCos | DataTypes::FuncAbs | 
                                         DataTypes::LogicalNot => {
+                                            self.rp = self.rp.to_owned() + &token + &"(";
+                                            self.func_counter += 1;
                                             self.prev_token = _val;
                                         }, 
                                         _ => return Err(Errs::RightSideStart),
@@ -470,13 +501,35 @@ impl Compiler {
                     DataTypes::LogicalNot | DataTypes::FuncAbs | DataTypes::FuncSin | 
                     DataTypes::FuncCos => {
                         println!("math-op");
-                        // int, var, func 
                         if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
                             self.prev_token = DataTypes::Int;
-                            // self.current_block = Blocks::RightSide;
+                            self.rp = self.rp.to_owned() + &token;
+                            for _ in 0..self.func_counter {
+                                self.rp = self.rp.to_owned() + &")";
+                            }
+                            self.func_counter = 0;
                         } else if let Ok(DataTypes::Var) = Compiler::define_var_type(&token) {
                             self.prev_token = DataTypes::Var;
-                            // self.current_block = Blocks::RightSide;
+                            //
+                            // change var to var's value (integer) or return error
+                            let mut i = 0;
+                            for (var, val) in &self.vars {
+                                if var == token {
+                                    i+=1;
+                                    self.rp = self.rp.to_owned() + val;
+                                    break;
+                                }
+                            }
+                            if i == 0 {
+                                return Err(Errs::RigthSideUnknownVar);
+                            }
+                            //
+                            //
+                            //self.rp = self.rp.to_owned() + &token;
+                            for _ in 0..self.func_counter {
+                                self.rp = self.rp.to_owned() + &")";
+                            }
+                            self.func_counter = 0;
                         } else {
                             if let true = Compiler::check_outbound_int(&token) {
                                 return Err(Errs::AtomImpermissibleInt);
@@ -485,7 +538,11 @@ impl Compiler {
                                 Some(_val) => {
                                     match _val {
                                         DataTypes::FuncSin 
-                                        | DataTypes::FuncCos | DataTypes::FuncAbs => {
+                                        | DataTypes::FuncCos | DataTypes::FuncAbs
+                                        | DataTypes::LogicalNot => {
+                                            // add (
+                                            self.rp = self.rp.to_owned() + &token + &"(";
+                                            self.func_counter += 1;
                                             self.prev_token = _val;
                                             self.current_block = Blocks::RightSide;
                                         }, 
@@ -519,6 +576,7 @@ impl Compiler {
         println!("{:?} - {:?}", self.current_block, self.prev_token);
         if let Blocks::Lang = self.current_block {
             if let DataTypes::EndTerm = self.prev_token {
+                println!("{}", self.rp);
                 return Ok(());
             } else if let DataTypes::StartTerm = self.prev_token {
                 return Err(Errs::LangNoMn);
@@ -574,6 +632,18 @@ impl Compiler {
         }
         Err(Errs::LangNoEndTerm)
         // Ok(())
+    }
+    fn calc_var(&mut self) {
+        let mut index = -1;
+        //let result = calculate!(self.rp);
+        let result: Result<&str, Errs> = Ok("0");
+        match result {
+            Ok(res) => {
+                println!("{} = {}",self.tracked_var, res);
+                self.vars.append(&mut vec![(String::from(self.tracked_var.to_owned()), String::from(res))]);
+            },
+            Err(e) => {return ;},
+        }
     }
     pub fn define_int_type(wit: &str) -> Result<DataTypes, Errs> {
         for (i, num) in wit.chars().enumerate() {
