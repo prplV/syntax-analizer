@@ -26,9 +26,8 @@ mod errs;
 mod core;
 use config::Compiler;
 extern crate evalmath;
-use evalmath::calculate;
 
-use std::io::{self, stdin};
+use std::io::stdin;
 
 
 // fn syntax_analizer(a: &str){

@@ -2,7 +2,7 @@ use core::panic;
 use regex::Regex;
 extern crate evalmath;
 //use evalmath::parse::parser;
-//use evalmath::calculate;
+use evalmath::calculate;
 //use evalmath::calculate::calculate;
 
 //what i need to add 
@@ -233,6 +233,14 @@ impl Compiler {
                                 },
                                 None => {
                                     //println!("hi stupid");
+                                    match  Compiler::calc_var(&self.rp, &self.tracked_var){
+                                        Some(_val) => {
+                                            self.vars.append(&mut vec![(String::from(self.tracked_var.to_owned()), _val)]);
+                                        },
+                                        // <==>
+                                        None => return Err(Errs::ImpermissibleBehaviour),
+                                    };
+                                    self.rp = String::new();
                                     if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
                                         self.current_block = Blocks::Oper;
                                         self.prev_token = DataTypes::Label;
@@ -353,6 +361,14 @@ impl Compiler {
                                     }
                                 },
                                 None => {
+                                    match  Compiler::calc_var(&self.rp, &self.tracked_var){
+                                        Some(_val) => {
+                                            self.vars.append(&mut vec![(String::from(self.tracked_var.to_owned()), _val)]);
+                                        },
+                                        // <==>
+                                        None => return Err(Errs::ImpermissibleBehaviour),
+                                    };
+                                    self.rp = String::new();
                                     if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
                                         self.prev_token = DataTypes::Label;
                                         self.current_block = Blocks::Oper;
@@ -457,16 +473,17 @@ impl Compiler {
                     ////// START RP
                     DataTypes::EqTerm => {
                         println!("=");
-                        self.rp = self.rp.to_owned() + &token;
                         self.current_block = Blocks::RightSide;
                         // -, func, var, int
                         if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
                             self.prev_token = DataTypes::Int;
+                            self.rp = self.rp.to_owned() + &token;
                         } else if let Ok(DataTypes::Var) = Compiler::define_var_type(&token) {
                             let mut i = 0;
-                            for (var, _) in &self.vars {
+                            for (var, val) in &self.vars {
                                 if var == token {
                                     i+=1;
+                                    self.rp = self.rp.to_owned() + &val;
                                     break;
                                 }
                             }
@@ -523,6 +540,7 @@ impl Compiler {
                             if i == 0 {
                                 return Err(Errs::RigthSideUnknownVar);
                             }
+
                             //
                             //
                             //self.rp = self.rp.to_owned() + &token;
@@ -577,6 +595,7 @@ impl Compiler {
         if let Blocks::Lang = self.current_block {
             if let DataTypes::EndTerm = self.prev_token {
                 println!("{}", self.rp);
+                println!("{:?}", self.vars);
                 return Ok(());
             } else if let DataTypes::StartTerm = self.prev_token {
                 return Err(Errs::LangNoMn);
@@ -633,16 +652,17 @@ impl Compiler {
         Err(Errs::LangNoEndTerm)
         // Ok(())
     }
-    fn calc_var(&mut self) {
+    fn calc_var(rp: &str, tracked_var: &str) -> Option<String>{
         let mut index = -1;
-        //let result = calculate!(self.rp);
-        let result: Result<&str, Errs> = Ok("0");
+        let result = calculate!(rp);
+        //let result: Result<&str, Errs> = Ok("0");
         match result {
             Ok(res) => {
-                println!("{} = {}",self.tracked_var, res);
-                self.vars.append(&mut vec![(String::from(self.tracked_var.to_owned()), String::from(res))]);
+                println!("{} = {}",tracked_var, res);
+                // self.vars.append(&mut vec![(String::from(self.tracked_var.to_owned()), res.ceil().to_string())]);
+                return Some(res.ceil().to_string());
             },
-            Err(e) => {return ;},
+            Err(_) => return None,
         }
     }
     pub fn define_int_type(wit: &str) -> Result<DataTypes, Errs> {
