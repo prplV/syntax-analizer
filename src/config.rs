@@ -1,14 +1,7 @@
-use core::panic;
 use regex::Regex;
 extern crate evalmath;
-//use evalmath::parse::parser;
 use evalmath::calculate;
-//use evalmath::calculate::calculate;
 
-//what i need to add 
-// 1 - const k
-// 2 - hash-set for vars and its values
-// 3 -  
 use crate::errs::Errs;
 use crate::core::{ DataTypes, Blocks } ;
 pub struct Compiler { 
@@ -138,8 +131,6 @@ impl Compiler {
                                             self.int_enum_control = false;
                                             self.prev_token = val;
                                         },
-                                        // rewrite to return error 
-                                        // _ => panic!("Irregular behaviour"),
                                         _ => return Err(Errs::MnSecondWithoutInts),
                                     }
                                 },
@@ -218,7 +209,7 @@ impl Compiler {
                                 },
                                 None => {
                                     //println!("hi stupid");
-                                    match  Compiler::calc_var(&self.rp, &self.tracked_var){
+                                    match  Compiler::calc_var(&self.rp){
                                         Some(_val) => {
                                             self.vars.append(&mut vec![(String::from(self.tracked_var.to_owned()), _val)]);
                                         },
@@ -344,7 +335,7 @@ impl Compiler {
                                     }
                                 },
                                 None => {
-                                    match  Compiler::calc_var(&self.rp, &self.tracked_var){
+                                    match  Compiler::calc_var(&self.rp){
                                         Some(_val) => {
                                             self.vars.append(&mut vec![(String::from(self.tracked_var.to_owned()), _val)]);
                                         },
@@ -490,7 +481,7 @@ impl Compiler {
                             }
                         }
                     },
-                    DataTypes::Plus | DataTypes::Minus | DataTypes::Multiply|
+                    DataTypes::Plus | DataTypes::Minus | DataTypes::Multiply |
                     DataTypes::Divide | DataTypes::LogicalAnd | DataTypes::LogicalOr |
                     DataTypes::LogicalNot | DataTypes::FuncAbs | DataTypes::FuncSin | 
                     DataTypes::FuncCos => {
@@ -516,10 +507,6 @@ impl Compiler {
                             if i == 0 {
                                 return Err(Errs::RigthSideUnknownVar);
                             }
-
-                            //
-                            //
-                            //self.rp = self.rp.to_owned() + &token;
                             for _ in 0..self.func_counter {
                                 self.rp = self.rp.to_owned() + &")";
                             }
@@ -541,30 +528,35 @@ impl Compiler {
                                             self.current_block = Blocks::RightSide;
                                         }, 
                                         _ => {
-                                            match Compiler::define_math_op_error(&self.prev_token) {
-                                                Some(er) => return Err(er),
-                                                None => panic!("impermissible behaviour"),
-                                            };
-                                        },//return Err(Errs::RightSideStart),
+                                            if self.prev_token == _val {
+                                                return Err(Errs::RigthSideDoubleMathOp);
+                                            } else {
+                                                match Compiler::define_math_op_error(&self.prev_token) {
+                                                    Some(er) => return Err(er),
+                                                    None => return Err(Errs::ImpermissibleBehaviour),
+                                                };
+                                            }
+                                        },
                                     }
                                 },
                                 None => {
+                                    //
+                                    //
+                                    //
                                     match Compiler::define_math_op_error(&self.prev_token) {
                                         Some(er) => return Err(er),
-                                        None => panic!("impermissible behaviour"),
+                                        None => return Err(Errs::ImpermissibleBehaviour),
                                     };
                                 }, 
                             }
                         }
                     },
-
-                    // ---------
                     DataTypes::EndTerm => {
                         break;
                     },
                     _ => todo!(),
                 }
-            // }
+
         }
         if let Blocks::Lang = self.current_block {
             if let DataTypes::EndTerm = self.prev_token {
@@ -624,12 +616,10 @@ impl Compiler {
         Err(Errs::LangNoEndTerm)
         // Ok(())
     }
-    fn calc_var(rp: &str, tracked_var: &str) -> Option<String>{
+    fn calc_var(rp: &str) -> Option<String>{
         let result = calculate!(rp);
-        //let result: Result<&str, Errs> = Ok("0");
         match result {
             Ok(res) => {
-                // self.vars.append(&mut vec![(String::from(self.tracked_var.to_owned()), res.ceil().to_string())]);
                 return Some(res.ceil().to_string());
             },
             Err(_) => return None,
@@ -701,6 +691,9 @@ impl Compiler {
             _ => return false,
         }
     }
+    //
+    //
+    //
     fn define_math_op_error(wit: &DataTypes) -> Option<Errs> {
         match wit {
             DataTypes::Plus => Some(Errs::RightSidePlus),
