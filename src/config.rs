@@ -12,15 +12,16 @@ use evalmath::calculate;
 use crate::errs::Errs;
 use crate::core::{ DataTypes, Blocks } ;
 pub struct Compiler { 
-    str: String,
+    pub str: String,
     prev_token: DataTypes, 
     current_block: Blocks,
     // >= 2 ints without commas activates this field (for err type "второе 12 32 конец слагаемого") 
     int_enum_control: bool,
     rp: String,
-    vars: Vec<(String, String)>,
+    pub vars: Vec<(String, String)>,
     tracked_var: String,
     func_counter: u32,
+    pub error_id: usize,
 }
 
 impl Compiler {
@@ -34,35 +35,23 @@ impl Compiler {
             vars: Vec::new(),
             tracked_var: String::new(),
             func_counter: 0,
+            error_id: 0,
         }
     }
     pub fn proccess(&mut self) -> Result<(), Errs> {
-        //
         // regex 
-        println!("{:?}", self.str);
         let reg = Regex::new(r"(:|=|sin|cos|abs|not|or|and|\+|\-|\*|\/|,|[а-я]+[0-9]+|[0-9]+)\s?").unwrap();
         let mut _res = &mut self.str;
         let _res = reg.replace_all(_res, " $1 ");
         println!("{:?}", _res);
         self.str = _res.into();
-        // return Ok(());
+        self.str = self.str.replace("  ", " "); 
         
         //
         for (i ,token) in self.str.split_ascii_whitespace().enumerate() {
-            // println!("{}. {}", i, token);
-            // // stupid pipe needs to be deleted soon
-            // if i == self.str.split_ascii_whitespace().count() - 1 {
-            //     if token != "конец" {
-            //         return Err(Errs::LangNoEndTerm);
-            //     } else {
-            //         println!("end term");
-            //         self.prev_token = DataTypes::EndTerm;
-            //     }
-            // } else {
-                
+            self.error_id = i;
                 match self.prev_token {
                     DataTypes::Null => {
-                        println!("null");
                         match Compiler::define_term_type(token) {
                             Some(val) => {
                                 if let DataTypes::StartTerm = val {
@@ -75,7 +64,6 @@ impl Compiler {
                         }
                     },
                     DataTypes::StartTerm => {
-                        println!("start");
                         match Compiler::define_term_type(&token) {
                             Some(val) => {
                                 if let DataTypes::FirstTerm = val {
@@ -95,7 +83,6 @@ impl Compiler {
                     },
 
                     DataTypes::FirstTerm => {
-                        println!("first");
                         match Compiler::define_var_type(&token) {
                             Ok(val) => self.prev_token = val,
                             Err(err) => {
@@ -112,7 +99,6 @@ impl Compiler {
                         }
                     },
                     DataTypes::SecondTerm => {
-                        println!("second");
                         match Compiler::define_int_type(&token) {
                             Ok(val) => {
                                 match val {
@@ -130,7 +116,6 @@ impl Compiler {
                     },
 
                     DataTypes::Int => {
-                        println!("int");
                         // mn 
                         if let Blocks::Mn = self.current_block {
                             if token == "," && self.int_enum_control == true {
@@ -267,7 +252,6 @@ impl Compiler {
                         // math ops 
                     },
                     DataTypes::IntWithComma => {
-                        println!("int,");
                         // int 
                         // int, 
                         match Compiler::define_int_type(&token) {
@@ -284,7 +268,6 @@ impl Compiler {
                         //todo!()
                     },              //vtoroe(...), slag (only one), label, 
                     DataTypes::Var => {
-                        println!("var");
                         // first 
                         if let Blocks::Mn = self.current_block {
                             if token == "," {
@@ -389,7 +372,6 @@ impl Compiler {
                         }
                     },
                     DataTypes::VarWithComma => {
-                        println!("var,");
                         // var,
                         match Compiler::define_var_type(&token) {
                             Ok(_val) => {
@@ -411,7 +393,6 @@ impl Compiler {
                     },
                     
                     DataTypes::EndSlagTerm1 => {
-                        println!("slag1");
                         match Compiler::define_term_type(&token) {
                             Some(val) => {
                                 if let DataTypes::EndSlagTerm2 = val {
@@ -425,7 +406,6 @@ impl Compiler {
                     },
 
                     DataTypes::EndSlagTerm2 => {
-                        println!("slag2");
                         match Compiler::define_int_type(&token) {
                             Ok(_val) => {
                                 if let DataTypes::Int = _val {
@@ -443,7 +423,6 @@ impl Compiler {
                     },
 
                     DataTypes::Label => {
-                        println!("label");
                         match Compiler::define_term_type(&token) {
                             Some(val) => {
                                 if let DataTypes::DblDotTerm = val {
@@ -457,7 +436,6 @@ impl Compiler {
                     },
 
                     DataTypes::DblDotTerm => {
-                        println!(":");
                         match Compiler::define_var_type(&token) {
                             Ok(_val) => {
                                 if let DataTypes::Var = _val {
@@ -472,7 +450,6 @@ impl Compiler {
                     },
                     ////// START RP
                     DataTypes::EqTerm => {
-                        println!("=");
                         self.current_block = Blocks::RightSide;
                         // -, func, var, int
                         if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
@@ -517,7 +494,6 @@ impl Compiler {
                     DataTypes::Divide | DataTypes::LogicalAnd | DataTypes::LogicalOr |
                     DataTypes::LogicalNot | DataTypes::FuncAbs | DataTypes::FuncSin | 
                     DataTypes::FuncCos => {
-                        println!("math-op");
                         if let Ok(DataTypes::Int) = Compiler::define_int_type(&token) {
                             self.prev_token = DataTypes::Int;
                             self.rp = self.rp.to_owned() + &token;
@@ -584,18 +560,14 @@ impl Compiler {
 
                     // ---------
                     DataTypes::EndTerm => {
-                        println!("end term");
                         break;
                     },
                     _ => todo!(),
                 }
             // }
         }
-        println!("{:?} - {:?}", self.current_block, self.prev_token);
         if let Blocks::Lang = self.current_block {
             if let DataTypes::EndTerm = self.prev_token {
-                println!("{}", self.rp);
-                println!("{:?}", self.vars);
                 return Ok(());
             } else if let DataTypes::StartTerm = self.prev_token {
                 return Err(Errs::LangNoMn);
@@ -653,12 +625,10 @@ impl Compiler {
         // Ok(())
     }
     fn calc_var(rp: &str, tracked_var: &str) -> Option<String>{
-        let mut index = -1;
         let result = calculate!(rp);
         //let result: Result<&str, Errs> = Ok("0");
         match result {
             Ok(res) => {
-                println!("{} = {}",tracked_var, res);
                 // self.vars.append(&mut vec![(String::from(self.tracked_var.to_owned()), res.ceil().to_string())]);
                 return Some(res.ceil().to_string());
             },
@@ -679,12 +649,7 @@ impl Compiler {
         }
         Ok(DataTypes::Int)
     }
-    // ???
     fn check_outbound_int(wit: &str) -> bool {
-        // match wit {
-        //     '8' | '9' => return true,
-        //     _ => return false,
-        // }
         for num in wit.chars() {
             match num {
                     '8' | '9' => return true,
